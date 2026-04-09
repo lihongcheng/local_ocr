@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="LaunchTheme" parent="Theme.SplashScreen">
+        <!-- Window background: single solid color (API 31 requirement) -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <!-- Adaptive icon (circle 240dp, art 160dp) -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <!-- Icon background circle color -->
+        <item name="windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+        <!-- Post-splash theme -->
+        <item name="postSplashScreenTheme">@style/NormalTheme</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+</resources>
