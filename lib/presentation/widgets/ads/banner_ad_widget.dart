@@ -14,7 +14,6 @@ class BannerAdWidget extends StatefulWidget {
 class _BannerAdWidgetState extends State<BannerAdWidget> {
   BannerAd? _bannerAd;
   bool _isLoaded = false;
-  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -23,33 +22,15 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   }
 
   void _loadAd() {
-    if (_isDisposed) return;
-
     final ad = AdService.instance.createBannerAd();
     if (ad == null) return;
-
     ad.load().then((_) {
-      if (!mounted || _isDisposed) {
-        ad.dispose();
-        return;
-      }
-      setState(() {
-        _bannerAd = ad;
-        _isLoaded = true;
-      });
-    }).catchError((error) {
-      debugPrint('Banner ad load error: $error');
-      if (!mounted) return;
-      // Retry after delay
-      Future.delayed(const Duration(seconds: 30), () {
-        if (mounted && !_isDisposed) _loadAd();
-      });
-    });
+      if (mounted) setState(() { _bannerAd = ad; _isLoaded = true; });
+    }).catchError((_) {});
   }
 
   @override
   void dispose() {
-    _isDisposed = true;
     _bannerAd?.dispose();
     super.dispose();
   }

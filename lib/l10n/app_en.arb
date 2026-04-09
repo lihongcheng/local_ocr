@@ -50,8 +50,8 @@
   "pdfCancel": "Cancel",
 
   "settingsTitle": "Settings",
-  "settingsPrivacyTitle": "100% Local Processing",
-  "settingsPrivacyDesc": "All recognition is done on-device. Images and text are never uploaded to any server.",
+  "settingsPrivacyTitle": "PP-OCRv5 · 100% Local",
+  "settingsPrivacyDesc": "PP-OCRv5 runs entirely on your device via ONNX Runtime (Android) or Apple Vision (iOS). No data leaves your phone.",
   "settingsOcrLang": "OCR Language",
   "settingsStats": "Statistics",
   "statsRecognitions": "Recognitions",

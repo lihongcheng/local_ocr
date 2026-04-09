@@ -1,0 +1,4 @@
+CFBundleDisplayName = "로컬 OCR";
+CFBundleName = "로컬 OCR";
+NSCameraUsageDescription = "문자 인식을 위한 사진 촬영에 사용됩니다.";
+NSPhotoLibraryUsageDescription = "문자 인식을 위한 이미지 선택에 사용됩니다.";

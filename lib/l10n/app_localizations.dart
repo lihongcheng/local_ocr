@@ -358,13 +358,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPrivacyTitle.
   ///
   /// In en, this message translates to:
-  /// **'100% Local Processing'**
+  /// **'PP-OCRv5 · 100% Local'**
   String get settingsPrivacyTitle;
 
   /// No description provided for @settingsPrivacyDesc.
   ///
   /// In en, this message translates to:
-  /// **'All recognition is done on-device. Images and text are never uploaded to any server.'**
+  /// **'PP-OCRv5 runs entirely on your device via ONNX Runtime (Android) or Apple Vision (iOS). No data leaves your phone.'**
   String get settingsPrivacyDesc;
 
   /// No description provided for @settingsOcrLang.

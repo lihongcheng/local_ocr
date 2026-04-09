@@ -137,11 +137,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTitle => 'Settings';
 
   @override
-  String get settingsPrivacyTitle => '100% Local Processing';
+  String get settingsPrivacyTitle => 'PP-OCRv5 · 100% Local';
 
   @override
   String get settingsPrivacyDesc =>
-      'All recognition is done on-device. Images and text are never uploaded to any server.';
+      'PP-OCRv5 runs entirely on your device via ONNX Runtime (Android) or Apple Vision (iOS). No data leaves your phone.';
 
   @override
   String get settingsOcrLang => 'OCR Language';

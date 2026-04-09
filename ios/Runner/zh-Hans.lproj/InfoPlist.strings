@@ -1,0 +1,4 @@
+CFBundleDisplayName = "本地OCR";
+CFBundleName = "本地OCR";
+NSCameraUsageDescription = "用于拍照识别文字。";
+NSPhotoLibraryUsageDescription = "用于从相册选择图片进行文字识别。";

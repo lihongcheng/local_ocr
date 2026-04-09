@@ -18,13 +18,13 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
     systemNavigationBarColor: Colors.black,
   ));
 
+  // 初始化 AdMob（iOS 内部会跳过）
   await AdService.instance.initialize();
 
   runApp(
@@ -40,7 +40,6 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     final localeProvider = context.watch<LocaleProvider>();

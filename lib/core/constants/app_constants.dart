@@ -3,22 +3,18 @@
 class AppConstants {
   AppConstants._();
 
-  static const String appName = '本地OCR';
+  static const String appName = 'Local OCR';
   static const String appVersion = '1.0.0';
 
-  // 支持的语言
-  static const List<Map<String, String>> supportedLanguages = [
-    {'code': 'zh', 'name': '中文', 'flag': '🇨🇳'},
-    {'code': 'en', 'name': 'English', 'flag': '🇺🇸'},
-    {'code': 'ja', 'name': '日本語', 'flag': '🇯🇵'},
-    {'code': 'ko', 'name': '한국어', 'flag': '🇰🇷'},
-    {'code': 'latin', 'name': 'Latin', 'flag': '🌐'},
+  // PP-OCRv5 支持的语言（仅用于显示说明，识别引擎自动处理）
+  static const List<String> supportedOcrScripts = [
+    'Simplified Chinese', 'Traditional Chinese', 'English',
+    'Japanese', 'Korean', 'Latin & 100+ languages',
   ];
 
-  static const int maxHistoryItems = 200;
+  static const int maxHistoryItems = 500;
   static const int imageMaxDimension = 2048;
-  static const int imageCompressQuality = 85;
 
-  // 广告展示间隔（秒）
-  static const int interstitialAdInterval = 5; // 每N次识别后展示一次插页广告
+  // 广告触发间隔（每N次识别后展示插页广告）
+  static const int interstitialAdInterval = 5;
 }

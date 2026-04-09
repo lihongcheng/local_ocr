@@ -2,43 +2,29 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="cn.inaiworld.local_ocr">
 
-    <!-- 网络权限（广告需要） -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- 摄像头权限 -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
-
-    <!-- 存储权限（Android 12 以下） -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
-
-    <!-- Android 13+ 分类媒体权限 -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-
-    <!-- 震动（广告反馈） -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="false"
+        android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true">
 
-        <!-- AdMob 应用 ID -->
+        <!-- AdMob App ID - 必须配置，否则广告SDK崩溃 -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-6243890571514259~5665210089" />
-
-        <!-- 延迟广告初始化（GDPR 合规） -->
-        <meta-data
-            android:name="com.google.android.gms.ads.DELAY_APP_MEASUREMENT_INIT"
-            android:value="true" />
 
         <activity
             android:name=".MainActivity"
@@ -54,12 +40,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Google Mobile Ads Activity -->
-        <activity
-            android:name="com.google.android.gms.ads.AdActivity"
-            android:exported="false"
-            android:theme="@android:style/Theme.Translucent" />
 
         <meta-data
             android:name="flutterEmbedding"

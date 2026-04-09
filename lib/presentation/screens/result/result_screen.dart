@@ -179,7 +179,7 @@ class _ResultScreenState extends State<ResultScreen> {
       _StatChip(icon: Icons.text_fields_rounded,
           label: l.historyWordCount(wordCount ?? 0), color: AppTheme.primaryColor),
       _StatChip(icon: Icons.lock_outline,
-          label: l.resultLocalBadge, color: AppTheme.accentColor),
+          label: 'PP-OCRv5', color: AppTheme.accentColor),
       _StatChip(icon: Icons.offline_bolt_outlined,
           label: l.resultOfflineBadge, color: AppTheme.secondaryColor),
     ]);

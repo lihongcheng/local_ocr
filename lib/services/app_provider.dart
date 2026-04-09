@@ -6,13 +6,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../data/models/ocr_record.dart';
 import 'database_service.dart';
 import 'ocr_service.dart';
 import 'ad_service.dart';
 
-enum AppStatus { idle, processing, success, error }
+enum AppStatus { idle, preparingModel, processing, success, error }
 
 class AppProvider extends ChangeNotifier {
   final _picker = ImagePicker();
@@ -25,29 +26,38 @@ class AppProvider extends ChangeNotifier {
   OcrRecord? _currentRecord;
   String _selectedLanguage = 'zh';
   String _searchQuery = '';
-  bool _isDarkMode = true;
   int _currentNavIndex = 0;
-  bool _isTtsEnabled = false;
+
+  // 模型就绪状态（透传给 UI 显示进度）
+  ModelStatus _modelStatus = ModelStatus.notReady;
 
   AppStatus get status => _status;
   String get errorMessage => _errorMessage;
   List<OcrRecord> get records => _records;
   OcrRecord? get currentRecord => _currentRecord;
   String get selectedLanguage => _selectedLanguage;
-  bool get isDarkMode => _isDarkMode;
   int get currentNavIndex => _currentNavIndex;
-  bool get isTtsEnabled => _isTtsEnabled;
+  ModelStatus get modelStatus => _modelStatus;
+  bool get isModelReady => _ocr.isReady;
 
   List<OcrRecord> get filteredRecords {
     if (_searchQuery.isEmpty) return _records;
+    final q = _searchQuery.toLowerCase();
     return _records
         .where((r) =>
-            r.extractedText
-                .toLowerCase()
-                .contains(_searchQuery.toLowerCase()) ||
-            (r.title?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
-                false))
+            r.extractedText.toLowerCase().contains(q) ||
+            (r.title?.toLowerCase().contains(q) ?? false))
         .toList();
+  }
+
+  /// App 启动时调用：预热 OCR 模型
+  Future<void> initOcr() async {
+    await _ocr.prepareModels(
+      onStatusChanged: (status, error) {
+        _modelStatus = status;
+        notifyListeners();
+      },
+    );
   }
 
   Future<void> loadRecords() async {
@@ -70,95 +80,140 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleDarkMode() {
-    _isDarkMode = !_isDarkMode;
-    notifyListeners();
+  // ── 权限请求 ─────────────────────────────────────────────────────────────
+
+  Future<bool> _requestCameraPermission(BuildContext context) async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      final s = await Permission.camera.request();
+      if (!s.isGranted) {
+        if (context.mounted) _showPermDialog(context, 'Camera permission required.');
+        return false;
+      }
+    }
+    return true;
   }
 
-  void toggleTts() {
-    _isTtsEnabled = !_isTtsEnabled;
-    notifyListeners();
+  Future<bool> _requestStoragePermission(BuildContext context) async {
+    if (Platform.isAndroid) {
+      final photos = await Permission.photos.request();
+      if (photos.isGranted) return true;
+      final storage = await Permission.storage.request();
+      if (!storage.isGranted) {
+        if (context.mounted) _showPermDialog(context, 'Storage permission required.');
+        return false;
+      }
+    } else if (Platform.isIOS) {
+      final s = await Permission.photos.request();
+      if (!s.isGranted) {
+        if (context.mounted) _showPermDialog(context, 'Photo library permission required.');
+        return false;
+      }
+    }
+    return true;
   }
 
-  Future<void> pickAndRecognize(BuildContext context,
-      {bool fromCamera = false}) async {
+  void _showPermDialog(BuildContext context, String msg) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Permission Required'),
+        content: Text(msg),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () { Navigator.pop(ctx); openAppSettings(); },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 确保模型就绪（若还未下载则先准备）────────────────────────────────────
+
+  Future<bool> _ensureModelReady(BuildContext context) async {
+    if (_ocr.isReady) return true;
+
+    _status = AppStatus.preparingModel;
+    notifyListeners();
+
+    await _ocr.prepareModels(
+      onStatusChanged: (status, error) {
+        _modelStatus = status;
+        notifyListeners();
+      },
+    );
+
+    if (!_ocr.isReady) {
+      _status = AppStatus.error;
+      _errorMessage = 'OCR model not ready. '
+          '${Platform.isAndroid ? "Please check your internet connection for the first-time model download." : ""}';
+      notifyListeners();
+      return false;
+    }
+    return true;
+  }
+
+  // ── 拍照 / 相册 识别 ──────────────────────────────────────────────────────
+
+  Future<void> pickAndRecognize(
+    BuildContext context, {
+    bool fromCamera = false,
+  }) async {
     try {
-      final source = fromCamera ? ImageSource.camera : ImageSource.gallery;
+      // 权限
+      final hasPerm = fromCamera
+          ? await _requestCameraPermission(context)
+          : await _requestStoragePermission(context);
+      if (!hasPerm) return;
+
+      // 选图
       final xFile = await _picker.pickImage(
-        source: source,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 90,
+        source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: 2048, maxHeight: 2048, imageQuality: 90,
       );
       if (xFile == null) return;
 
-      _status = AppStatus.processing;
-      notifyListeners();
+      // 确保模型就绪
+      if (!context.mounted) return;
+      final ready = await _ensureModelReady(context);
+      if (!ready) return;
 
-      final file = File(xFile.path);
-      final result = await _ocr.recognizeFromFile(
-        file,
-        languageCode: _selectedLanguage,
-      );
-
-      if (!result.success || result.isEmpty) {
-        _status = AppStatus.error;
-        _errorMessage = result.isEmpty ? '未识别到文字，请确保图片清晰' : (result.error ?? '识别失败');
-        notifyListeners();
-        return;
-      }
-
-      // 保存缩略图
-      final thumbPath = await _saveThumbnail(file);
-
-      // 保存记录
-      final record = OcrRecord()
-        ..extractedText = result.text
-        ..createdAt = DateTime.now()
-        ..imagePath = file.path
-        ..thumbnailPath = thumbPath
-        ..language = _selectedLanguage
-        ..wordCount = result.wordCount
-        ..title = result.text.length > 30
-            ? result.text.substring(0, 30)
-            : result.text;
-
-      await _db.saveRecord(record);
-      await loadRecords();
-
-      _currentRecord = record;
-      _status = AppStatus.success;
-      notifyListeners();
-
-      // 通知广告服务识别完成
-      AdService.instance.onRecognitionCompleted();
+      await _runRecognition(xFile.path);
     } catch (e) {
       _status = AppStatus.error;
-      _errorMessage = '发生错误: $e';
+      _errorMessage = 'Error: $e';
       notifyListeners();
     }
   }
 
+  /// 从已知路径识别（扫描页拍照后调用）
   Future<void> recognizeFromPath(String imagePath) async {
+    await _runRecognition(imagePath);
+  }
+
+  Future<void> _runRecognition(String imagePath) async {
     _status = AppStatus.processing;
     notifyListeners();
 
     try {
-      final file = File(imagePath);
-      final result = await _ocr.recognizeFromFile(
-        file,
-        languageCode: _selectedLanguage,
-      );
+      final result = await _ocr.recognizeFromFile(imagePath);
 
-      if (!result.success || result.isEmpty) {
+      if (!result.success) {
         _status = AppStatus.error;
-        _errorMessage = result.isEmpty ? '未识别到文字' : (result.error ?? '识别失败');
+        _errorMessage = result.error ?? 'Recognition failed';
         notifyListeners();
         return;
       }
 
-      final thumbPath = await _saveThumbnail(file);
+      if (result.isEmpty) {
+        _status = AppStatus.error;
+        _errorMessage = 'No text found in the image';
+        notifyListeners();
+        return;
+      }
 
+      final thumbPath = await _saveThumbnail(imagePath);
       final record = OcrRecord()
         ..extractedText = result.text
         ..createdAt = DateTime.now()
@@ -166,13 +221,12 @@ class AppProvider extends ChangeNotifier {
         ..thumbnailPath = thumbPath
         ..language = _selectedLanguage
         ..wordCount = result.wordCount
-        ..title = result.text.length > 30
-            ? result.text.substring(0, 30)
+        ..title = result.text.length > 35
+            ? result.text.substring(0, 35)
             : result.text;
 
       await _db.saveRecord(record);
       await loadRecords();
-
       _currentRecord = record;
       _status = AppStatus.success;
       notifyListeners();
@@ -180,29 +234,22 @@ class AppProvider extends ChangeNotifier {
       AdService.instance.onRecognitionCompleted();
     } catch (e) {
       _status = AppStatus.error;
-      _errorMessage = '识别失败: $e';
+      _errorMessage = 'Recognition error: $e';
       notifyListeners();
     }
   }
 
-  Future<String?> _saveThumbnail(File original) async {
+  Future<String?> _saveThumbnail(String src) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final thumbDir = Directory(path.join(dir.path, 'thumbnails'));
-      if (!thumbDir.existsSync()) thumbDir.createSync();
-
-      final thumbPath = path.join(
-        thumbDir.path,
-        'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      final td = Directory(path.join(dir.path, 'thumbnails'));
+      if (!td.existsSync()) td.createSync(recursive: true);
+      final dst = path.join(
+          td.path, 'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final r = await FlutterImageCompress.compressAndGetFile(
+        src, dst, minWidth: 200, minHeight: 200, quality: 70,
       );
-      final result = await FlutterImageCompress.compressAndGetFile(
-        original.absolute.path,
-        thumbPath,
-        minWidth: 200,
-        minHeight: 200,
-        quality: 70,
-      );
-      return result?.path;
+      return r?.path;
     } catch (_) {
       return null;
     }
@@ -211,9 +258,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> deleteRecord(int id) async {
     await _db.deleteRecord(id);
     await loadRecords();
-    if (_currentRecord?.id == id) {
-      _currentRecord = null;
-    }
+    if (_currentRecord?.id == id) _currentRecord = null;
     notifyListeners();
   }
 
@@ -236,6 +281,6 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> shareText(String text) async {
-    await Share.share(text, subject: '来自本地OCR的识别结果');
+    await Share.share(text, subject: 'Local OCR Result');
   }
 }

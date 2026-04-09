@@ -137,10 +137,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsTitle => '设置';
 
   @override
-  String get settingsPrivacyTitle => '完全本地化处理';
+  String get settingsPrivacyTitle => 'PP-OCRv5 · 完全本地识别';
 
   @override
-  String get settingsPrivacyDesc => '所有文字识别均在设备本地完成，图片与文字永不上传至任何服务器，保护您的隐私。';
+  String get settingsPrivacyDesc =>
+      'PP-OCRv5 完全在您的设备本地运行（Android 使用 ONNX Runtime，iOS 使用 Apple Vision），图片与文字永不离开您的手机。';
 
   @override
   String get settingsOcrLang => '识别语言';

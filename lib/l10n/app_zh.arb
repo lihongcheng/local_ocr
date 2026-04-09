@@ -48,8 +48,8 @@
   "pdfCancel": "取消",
 
   "settingsTitle": "设置",
-  "settingsPrivacyTitle": "完全本地化处理",
-  "settingsPrivacyDesc": "所有文字识别均在设备本地完成，图片与文字永不上传至任何服务器，保护您的隐私。",
+  "settingsPrivacyTitle": "PP-OCRv5 · 完全本地识别",
+  "settingsPrivacyDesc": "PP-OCRv5 完全在您的设备本地运行（Android 使用 ONNX Runtime，iOS 使用 Apple Vision），图片与文字永不离开您的手机。",
   "settingsOcrLang": "识别语言",
   "settingsStats": "使用统计",
   "statsRecognitions": "识别次数",

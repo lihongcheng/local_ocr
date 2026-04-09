@@ -1,0 +1,4 @@
+CFBundleDisplayName = "Local OCR";
+CFBundleName = "Local OCR";
+NSCameraUsageDescription = "Used to scan and recognize text from photos.";
+NSPhotoLibraryUsageDescription = "Used to select images for text recognition.";

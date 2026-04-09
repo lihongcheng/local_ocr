@@ -14,8 +14,8 @@ class AdService extends ChangeNotifier {
     return _instance!;
   }
 
-  // iOS: ads completely disabled
-  bool get _adsEnabled => Platform.isAndroid;
+  // iOS完全禁用广告
+  static bool get adsEnabled => Platform.isAndroid;
 
   InterstitialAd? _interstitialAd;
   bool _isInterstitialLoaded = false;
@@ -30,22 +30,27 @@ class AdService extends ChangeNotifier {
   DateTime? _appOpenAdLoadTime;
 
   Future<void> initialize() async {
-    if (!_adsEnabled) {
-      debugPrint('ℹ️  AdMob: iOS — ads disabled');
+    if (!adsEnabled) {
+      debugPrint('ℹ️  AdMob: iOS — ads completely disabled');
       return;
     }
-    await MobileAds.instance.initialize();
-    debugPrint(AdConfig.useTestAds
-        ? '⚠️  AdMob: TEST ads mode'
-        : '✅  AdMob: REAL ads mode');
-    _loadInterstitialAd();
-    _loadRewardedAd();
-    _loadAppOpenAd();
+    try {
+      await MobileAds.instance.initialize();
+      debugPrint(AdConfig.useTestAds
+          ? '⚠️  AdMob running in TEST mode'
+          : '✅  AdMob running in PRODUCTION mode');
+      // 预加载各类广告
+      _loadInterstitialAd();
+      _loadRewardedAd();
+      _loadAppOpenAd();
+    } catch (e) {
+      debugPrint('AdMob init error: $e');
+    }
   }
 
-  // ── Interstitial ──────────────────────────────────────────────────────
+  // ── 插页广告 ──────────────────────────────────────────────────────────
   void _loadInterstitialAd() {
-    if (!_adsEnabled) return;
+    if (!adsEnabled) return;
     InterstitialAd.load(
       adUnitId: AdConfig.interstitialId,
       request: const AdRequest(),
@@ -53,30 +58,38 @@ class AdService extends ChangeNotifier {
         onAdLoaded: (ad) {
           _interstitialAd = ad;
           _isInterstitialLoaded = true;
+          debugPrint('✅ Interstitial ad loaded');
           ad.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
-              ad.dispose(); _interstitialAd = null;
+              ad.dispose();
+              _interstitialAd = null;
               _isInterstitialLoaded = false;
-              _loadInterstitialAd();
+              _loadInterstitialAd(); // 预加载下一个
             },
-            onAdFailedToShowFullScreenContent: (ad, _) {
-              ad.dispose(); _interstitialAd = null;
+            onAdFailedToShowFullScreenContent: (ad, error) {
+              debugPrint('Interstitial show failed: $error');
+              ad.dispose();
+              _interstitialAd = null;
               _isInterstitialLoaded = false;
               _loadInterstitialAd();
             },
           );
         },
-        onAdFailedToLoad: (_) {
+        onAdFailedToLoad: (error) {
+          debugPrint('Interstitial load failed: $error');
           _isInterstitialLoaded = false;
+          // 30秒后重试
           Future.delayed(const Duration(seconds: 30), _loadInterstitialAd);
         },
       ),
     );
   }
 
+  /// 每次识别完成调用，达到阈值后展示插页广告
   void onRecognitionCompleted() {
-    if (!_adsEnabled) return;
+    if (!adsEnabled) return;
     _recognitionCount++;
+    debugPrint('Recognition count: $_recognitionCount / ${AppConstants.interstitialAdInterval}');
     if (_recognitionCount >= AppConstants.interstitialAdInterval) {
       _recognitionCount = 0;
       showInterstitialAd();
@@ -89,9 +102,9 @@ class AdService extends ChangeNotifier {
     }
   }
 
-  // ── Rewarded ──────────────────────────────────────────────────────────
+  // ── 激励广告 ──────────────────────────────────────────────────────────
   void _loadRewardedAd() {
-    if (!_adsEnabled) return;
+    if (!adsEnabled) return;
     RewardedAd.load(
       adUnitId: AdConfig.rewardedId,
       request: const AdRequest(),
@@ -99,23 +112,28 @@ class AdService extends ChangeNotifier {
         onAdLoaded: (ad) {
           _rewardedAd = ad;
           _isRewardedLoaded = true;
+          debugPrint('✅ Rewarded ad loaded');
           notifyListeners();
           ad.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
-              ad.dispose(); _rewardedAd = null;
+              ad.dispose();
+              _rewardedAd = null;
               _isRewardedLoaded = false;
               notifyListeners();
               _loadRewardedAd();
             },
-            onAdFailedToShowFullScreenContent: (ad, _) {
-              ad.dispose(); _rewardedAd = null;
+            onAdFailedToShowFullScreenContent: (ad, error) {
+              debugPrint('Rewarded show failed: $error');
+              ad.dispose();
+              _rewardedAd = null;
               _isRewardedLoaded = false;
               notifyListeners();
               _loadRewardedAd();
             },
           );
         },
-        onAdFailedToLoad: (_) {
+        onAdFailedToLoad: (error) {
+          debugPrint('Rewarded load failed: $error');
           _isRewardedLoaded = false;
           Future.delayed(const Duration(seconds: 30), _loadRewardedAd);
         },
@@ -123,11 +141,12 @@ class AdService extends ChangeNotifier {
     );
   }
 
-  bool get isRewardedAdReady => _adsEnabled && _isRewardedLoaded && _rewardedAd != null;
+  bool get isRewardedAdReady => adsEnabled && _isRewardedLoaded && _rewardedAd != null;
 
+  /// 展示激励广告，iOS或无广告时直接触发回调
   Future<bool> showRewardedAd({required VoidCallback onRewarded}) async {
-    if (!isRewardedAdReady) {
-      // iOS or no ad: reward immediately
+    if (!adsEnabled || !isRewardedAdReady) {
+      // iOS直接给奖励，无需看广告
       onRewarded();
       return true;
     }
@@ -138,12 +157,16 @@ class AdService extends ChangeNotifier {
         if (!completer.isCompleted) completer.complete(true);
       },
     );
+    // 超时保护：15秒后如果没完成，认为失败
+    Future.delayed(const Duration(seconds: 15), () {
+      if (!completer.isCompleted) completer.complete(false);
+    });
     return completer.future;
   }
 
-  // ── App Open ──────────────────────────────────────────────────────────
+  // ── 开屏广告 ──────────────────────────────────────────────────────────
   void _loadAppOpenAd() {
-    if (!_adsEnabled) return;
+    if (!adsEnabled) return;
     AppOpenAd.load(
       adUnitId: AdConfig.appOpenId,
       request: const AdRequest(),
@@ -152,33 +175,41 @@ class AdService extends ChangeNotifier {
           _appOpenAd = ad;
           _isAppOpenAdLoaded = true;
           _appOpenAdLoadTime = DateTime.now();
+          debugPrint('✅ App open ad loaded');
         },
-        onAdFailedToLoad: (_) => _isAppOpenAdLoaded = false,
+        onAdFailedToLoad: (error) {
+          debugPrint('App open ad load failed: $error');
+          _isAppOpenAdLoaded = false;
+        },
       ),
     );
   }
 
   bool get _isAppOpenAdValid {
     if (!_isAppOpenAdLoaded || _appOpenAd == null || _appOpenAdLoadTime == null) return false;
+    // 开屏广告4小时内有效
     return DateTime.now().difference(_appOpenAdLoadTime!).inHours < 4;
   }
 
   Future<void> showAppOpenAd() async {
-    if (!_adsEnabled || _isShowingAppOpenAd || !_isAppOpenAdValid) {
-      _loadAppOpenAd();
+    if (!adsEnabled || _isShowingAppOpenAd || !_isAppOpenAdValid) {
+      if (adsEnabled) _loadAppOpenAd(); // 预加载下一次
       return;
     }
     _appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (_) => _isShowingAppOpenAd = true,
       onAdDismissedFullScreenContent: (ad) {
         _isShowingAppOpenAd = false;
-        ad.dispose(); _appOpenAd = null;
+        ad.dispose();
+        _appOpenAd = null;
         _isAppOpenAdLoaded = false;
         _loadAppOpenAd();
       },
-      onAdFailedToShowFullScreenContent: (ad, _) {
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        debugPrint('App open show failed: $error');
         _isShowingAppOpenAd = false;
-        ad.dispose(); _appOpenAd = null;
+        ad.dispose();
+        _appOpenAd = null;
         _isAppOpenAdLoaded = false;
         _loadAppOpenAd();
       },
@@ -186,18 +217,18 @@ class AdService extends ChangeNotifier {
     await _appOpenAd!.show();
   }
 
-  // ── Banner ────────────────────────────────────────────────────────────
+  // ── 横幅广告（由widget管理生命周期）─────────────────────────────────
   BannerAd? createBannerAd() {
-    if (!_adsEnabled) return null;
+    if (!adsEnabled) return null;
     return BannerAd(
       adUnitId: AdConfig.bannerId,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (_) {},
+        onAdLoaded: (_) => debugPrint('✅ Banner ad loaded'),
         onAdFailedToLoad: (ad, error) {
-          debugPrint('Banner ad failed to load: $error');
-          // Don't dispose immediately - let the caller handle it
+          debugPrint('Banner load failed: $error');
+          ad.dispose(); // 必须dispose失败的ad
         },
       ),
     );

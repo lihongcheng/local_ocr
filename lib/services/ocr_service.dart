@@ -1,83 +1,108 @@
 // lib/services/ocr_service.dart
+//
+// OCR 引擎：PP-OCRv5（通过 mobile_ocr 插件）
+//   - Android：ONNX Runtime 运行 PP-OCRv5 检测 + 识别双模型，首次需联网下载 ~20MB
+//   - iOS：系统 Apple Vision 框架，无需下载，开箱离线
+//
 import 'dart:io';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:flutter/foundation.dart';
+import 'package:mobile_ocr/mobile_ocr_plugin.dart';
+import 'package:mobile_ocr/models/text_block.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
+import 'package:path/path.dart' as p;
+
+enum ModelStatus {
+  notReady,    // 尚未初始化
+  downloading, // Android 首次下载模型中
+  ready,       // 就绪，可识别
+  error,       // 初始化失败
+}
 
 class OcrService {
-  static OcrService? _instance;
-  final Map<String, TextRecognizer> _recognizers = {};
-
   OcrService._();
+  static final OcrService instance = OcrService._();
 
-  static OcrService get instance {
-    _instance ??= OcrService._();
-    return _instance!;
-  }
+  final MobileOcr _ocr = MobileOcr();
+  ModelStatus _modelStatus = ModelStatus.notReady;
+  String _modelError = '';
 
-  TextRecognizer _getRecognizer(String languageCode) {
-    if (!_recognizers.containsKey(languageCode)) {
-      final script = _getScript(languageCode);
-      _recognizers[languageCode] = TextRecognizer(script: script);
-    }
-    return _recognizers[languageCode]!;
-  }
+  ModelStatus get modelStatus => _modelStatus;
+  String get modelError => _modelError;
+  bool get isReady => _modelStatus == ModelStatus.ready;
 
-  TextRecognitionScript _getScript(String code) {
-    switch (code) {
-      case 'zh':
-        return TextRecognitionScript.chinese;
-      case 'ja':
-        return TextRecognitionScript.japanese;
-      case 'ko':
-        return TextRecognitionScript.korean;
-      case 'latin':
-        return TextRecognitionScript.latin;
-      default:
-        return TextRecognitionScript.chinese;
-    }
-  }
-
-  /// 从图片文件中识别文字
-  Future<OcrResult> recognizeFromFile(
-    File imageFile, {
-    String languageCode = 'zh',
+  /// 初始化模型（应在 App 启动时调用，可多次调用，幂等）
+  Future<void> prepareModels({
+    void Function(ModelStatus status, String? error)? onStatusChanged,
   }) async {
-    final stopwatch = Stopwatch()..start();
+    if (_modelStatus == ModelStatus.ready) return;
+    if (_modelStatus == ModelStatus.downloading) return;
+
+    _modelStatus = ModelStatus.downloading;
+    onStatusChanged?.call(_modelStatus, null);
 
     try {
-      // 压缩图片以提高性能
-      final compressedFile = await _compressImage(imageFile);
-      final inputImage = InputImage.fromFile(compressedFile ?? imageFile);
-      final recognizer = _getRecognizer(languageCode);
-      final recognizedText = await recognizer.processImage(inputImage);
+      // iOS：no-op；Android：下载 PP-OCRv5 ONNX 模型到本地缓存
+      await _ocr.prepareModels();
+      _modelStatus = ModelStatus.ready;
+      _modelError = '';
+      debugPrint('✅ OCR (PP-OCRv5) model ready');
+    } catch (e) {
+      _modelStatus = ModelStatus.error;
+      _modelError = e.toString();
+      debugPrint('❌ OCR model prepare failed: $e');
+    }
+    onStatusChanged?.call(_modelStatus, _modelError.isNotEmpty ? _modelError : null);
+  }
 
-      stopwatch.stop();
+  /// 从文件路径识别文字（静态识别：拍照 / 相册选图）
+  Future<OcrResult> recognizeFromFile(String imagePath) async {
+    final sw = Stopwatch()..start();
+    try {
+      // 压缩图片（保证质量同时降低内存占用）
+      final processPath = await _compressImage(imagePath) ?? imagePath;
 
-      // 整理文字
-      final blocks = recognizedText.blocks;
-      final lines = <String>[];
-      for (final block in blocks) {
-        for (final line in block.lines) {
-          lines.add(line.text);
-        }
+      // PP-OCRv5 检测 + 识别
+      final result = await _ocr.detectText(imagePath: processPath);
+      final blocks = result.blocks;
+      sw.stop();
+
+      if (blocks.isEmpty) {
+        return OcrResult(
+          text: '',
+          blocks: [],
+          processingTimeMs: sw.elapsedMilliseconds,
+          wordCount: 0,
+          success: true, // 识别成功但图片里无文字
+        );
       }
-      final fullText = lines.join('\n');
+
+      // 按置信度过滤，并按坐标排序（从上到下）
+      final filtered = blocks
+          .where((b) => b.confidence > 0.4)
+          .toList()
+        ..sort((a, b) => a.boundingBox.top.compareTo(b.boundingBox.top));
+
+      final fullText = filtered.map((b) => b.text.trim()).join('\n');
+      final wordCount = _countChars(fullText);
+
+      debugPrint(
+          '✅ OCR done: ${filtered.length} blocks, ${sw.elapsedMilliseconds}ms');
 
       return OcrResult(
         text: fullText,
-        blocks: recognizedText.blocks,
-        processingTimeMs: stopwatch.elapsedMilliseconds,
-        wordCount: _countWords(fullText),
+        blocks: filtered,
+        processingTimeMs: sw.elapsedMilliseconds,
+        wordCount: wordCount,
         success: true,
       );
     } catch (e) {
-      stopwatch.stop();
+      sw.stop();
+      debugPrint('❌ OCR error: $e');
       return OcrResult(
         text: '',
         blocks: [],
-        processingTimeMs: stopwatch.elapsedMilliseconds,
+        processingTimeMs: sw.elapsedMilliseconds,
         wordCount: 0,
         success: false,
         error: e.toString(),
@@ -85,81 +110,39 @@ class OcrService {
     }
   }
 
-  /// 从 InputImage（摄像头帧）识别文字
-  Future<OcrResult> recognizeFromInputImage(
-    InputImage inputImage, {
-    String languageCode = 'zh',
-  }) async {
-    try {
-      final recognizer = _getRecognizer(languageCode);
-      final recognizedText = await recognizer.processImage(inputImage);
-
-      final lines = <String>[];
-      for (final block in recognizedText.blocks) {
-        for (final line in block.lines) {
-          lines.add(line.text);
-        }
-      }
-      final fullText = lines.join('\n');
-
-      return OcrResult(
-        text: fullText,
-        blocks: recognizedText.blocks,
-        processingTimeMs: 0,
-        wordCount: _countWords(fullText),
-        success: true,
-      );
-    } catch (e) {
-      return OcrResult(
-        text: '',
-        blocks: [],
-        processingTimeMs: 0,
-        wordCount: 0,
-        success: false,
-        error: e.toString(),
-      );
-    }
-  }
-
-  Future<File?> _compressImage(File file) async {
+  /// 压缩图片：保持 1280px 以内，质量 88
+  Future<String?> _compressImage(String src) async {
     try {
       final dir = await getTemporaryDirectory();
-      final targetPath = path.join(
-        dir.path,
-        'ocr_compressed_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
+      final dst = p.join(
+          dir.path, 'ocr_c_${DateTime.now().millisecondsSinceEpoch}.jpg');
       final result = await FlutterImageCompress.compressAndGetFile(
-        file.absolute.path,
-        targetPath,
-        quality: 85,
-        minWidth: 800,
-        minHeight: 800,
+        src, dst,
+        quality: 88,
+        minWidth: 1280,
+        minHeight: 1280,
       );
-      return result != null ? File(result.path) : null;
+      return result?.path;
     } catch (_) {
       return null;
     }
   }
 
-  int _countWords(String text) {
+  int _countChars(String text) {
     if (text.isEmpty) return 0;
-    // 中文按字符计，英文按单词计
-    final chineseChars = RegExp(r'[\u4e00-\u9fa5]').allMatches(text).length;
-    final englishWords = RegExp(r'\b[a-zA-Z]+\b').allMatches(text).length;
-    return chineseChars + englishWords;
-  }
-
-  void dispose() {
-    for (final r in _recognizers.values) {
-      r.close();
-    }
-    _recognizers.clear();
+    final cjk = RegExp(r'[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]')
+        .allMatches(text)
+        .length;
+    final eng = RegExp(r'\b[a-zA-Z]+\b').allMatches(text).length;
+    return cjk + eng;
   }
 }
 
+// ─── 识别结果 ─────────────────────────────────────────────────────────────────
+
 class OcrResult {
   final String text;
-  final List<TextBlock> blocks;
+  final List<TextBlock> blocks; // mobile_ocr TextBlock
   final int processingTimeMs;
   final int wordCount;
   final bool success;

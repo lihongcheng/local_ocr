@@ -55,7 +55,7 @@ class LanguageScreen extends StatelessWidget {
             ]),
           ),
           ..._options.map((opt) {
-            final code = opt['locale'];
+            final code = opt['locale'] as String?;
             final optCode = code ?? 'auto';
             final isSelected = currentCode() == optCode;
             return Card(

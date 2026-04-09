@@ -18,19 +18,36 @@ class ScanFab extends StatelessWidget {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 40, height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(color: Colors.white24,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
                     borderRadius: BorderRadius.circular(2)),
               ),
-              Text(l.scanStart,
-                  style: const TextStyle(color: Colors.white,
-                      fontSize: 18, fontWeight: FontWeight.bold)),
+              // 标题 + 引擎标签
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text(l.scanStart,
+                    style: const TextStyle(color: Colors.white,
+                        fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00D2AA).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: const Color(0xFF00D2AA).withOpacity(0.4)),
+                  ),
+                  child: const Text('PP-OCRv5',
+                      style: TextStyle(color: Color(0xFF00D2AA),
+                          fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ]),
               const SizedBox(height: 24),
               Row(children: [
                 Expanded(child: _OptionCard(
@@ -61,7 +78,7 @@ class ScanFab extends StatelessWidget {
                   },
                 )),
               ]),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -92,8 +109,7 @@ class _OptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      onTap: onTap, borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
@@ -104,7 +120,8 @@ class _OptionCard extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, color: color, size: 32),
           const SizedBox(height: 8),
-          Text(label, style: TextStyle(color: color, fontSize: 12),
+          Text(label,
+              style: TextStyle(color: color, fontSize: 12),
               textAlign: TextAlign.center),
         ]),
       ),
