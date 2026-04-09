@@ -1,14 +1,12 @@
 // lib/presentation/screens/scanner/scanner_screen.dart
 //
-// 扫描页：三种模式
+// 扫描页：两种模式
 //   1. 拍照识别（静态）
 //   2. 相册选图（静态）
-//   3. 实时识别 Live（逐帧截图 → PP-OCRv5，每秒一帧，防止积压）
 //
-// 实时识别不使用 startImageStream 的 YUV 转换（之前崩溃根源），
-// 改用 takePicture 节流拍照 → JPEG → PP-OCRv5 检测，更稳定可靠。
+// 已移除实时识别功能。
+// 已移除中心矩形扫描框，改为全屏取景，体验更直观。
 //
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
@@ -17,7 +15,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/app_provider.dart';
-import '../../../services/ocr_service.dart';
 import '../result/result_screen.dart';
 
 class ScannerScreen extends StatefulWidget {
@@ -31,14 +28,8 @@ class _ScannerScreenState extends State<ScannerScreen>
   CameraController? _controller;
   bool _isInitialized = false;
   bool _isProcessing = false;
-  bool _isLiveMode = false;
-  String _liveText = '';
   bool _isTorchOn = false;
   final _picker = ImagePicker();
-
-  // 实时模式：每 1.2 秒拍一张照片进行识别
-  Timer? _liveTimer;
-  static const _liveInterval = Duration(milliseconds: 1200);
 
   @override
   void initState() {
@@ -52,7 +43,6 @@ class _ScannerScreenState extends State<ScannerScreen>
     final ctrl = _controller;
     if (ctrl == null || !ctrl.value.isInitialized) return;
     if (state == AppLifecycleState.inactive) {
-      _stopLive();
       ctrl.dispose();
       if (mounted) setState(() { _isInitialized = false; });
     } else if (state == AppLifecycleState.resumed) {
@@ -63,13 +53,11 @@ class _ScannerScreenState extends State<ScannerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _stopLive();
     _controller?.dispose();
     super.dispose();
   }
 
   Future<void> _initCamera() async {
-    // 请求相机权限
     final status = await Permission.camera.request();
     if (!status.isGranted) {
       if (mounted) {
@@ -95,13 +83,12 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
-  // ── 静态拍照识别 ────────────────────────────────────────────────────────
+  // ── 拍照识别 ──────────────────────────────────────────────────────────────
 
   Future<void> _captureAndRecognize() async {
     final ctrl = _controller;
     if (ctrl == null || !ctrl.value.isInitialized) return;
     if (_isProcessing) return;
-    if (_isLiveMode) { _stopLive(); return; }
 
     setState(() => _isProcessing = true);
     try {
@@ -128,14 +115,12 @@ class _ScannerScreenState extends State<ScannerScreen>
   Future<void> _runRecognitionAndNavigate(String imagePath) async {
     final provider = context.read<AppProvider>();
 
-    // 若模型未就绪，先准备
     if (!provider.isModelReady) {
       await provider.initOcr();
       if (!provider.isModelReady) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text(
-                  'OCR model not ready. Check internet connection.')));
+              content: Text('OCR model not ready. Check internet connection.')));
         }
         return;
       }
@@ -152,46 +137,18 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
-  // ── 实时识别（定时拍照模式，避免 YUV 崩溃）──────────────────────────────
-
-  void _startLive() {
-    final ctrl = _controller;
-    if (ctrl == null || !ctrl.value.isInitialized) return;
-    setState(() { _isLiveMode = true; _liveText = ''; });
-    _liveTimer = Timer.periodic(_liveInterval, (_) => _liveCapture());
-  }
-
-  void _stopLive() {
-    _liveTimer?.cancel();
-    _liveTimer = null;
-    if (mounted) setState(() { _isLiveMode = false; _liveText = ''; });
-  }
-
-  Future<void> _liveCapture() async {
-    final ctrl = _controller;
-    if (ctrl == null || !ctrl.value.isInitialized) return;
-    if (_isProcessing) return;
-    if (!_isLiveMode) return;
-    _isProcessing = true;
-    try {
-      final xFile = await ctrl.takePicture();
-      final result = await OcrService.instance.recognizeFromFile(xFile.path);
-      // 清理临时文件
-      try { File(xFile.path).deleteSync(); } catch (_) {}
-      if (mounted && _isLiveMode) {
-        setState(() => _liveText = result.text.isNotEmpty ? result.text : _liveText);
-      }
-    } catch (_) {}
-    _isProcessing = false;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D1117),
-        title: const Text('Scanner', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Scanner',
+            style: TextStyle(color: Colors.white, shadows: [
+              Shadow(color: Colors.black54, blurRadius: 8)
+            ])),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           // 手电筒
@@ -247,51 +204,14 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
 
     return Stack(fit: StackFit.expand, children: [
+      // 全屏相机预览
       CameraPreview(_controller!),
-      CustomPaint(painter: _ScanOverlayPainter()),
 
-      // 实时识别结果
-      if (_isLiveMode)
-        Positioned(
-          left: 0, right: 0, bottom: 160,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.85),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.accentColor.withOpacity(0.6)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(children: [
-                  Container(width: 8, height: 8,
-                      decoration: const BoxDecoration(
-                          shape: BoxShape.circle, color: AppTheme.accentColor)),
-                  const SizedBox(width: 6),
-                  const Text('PP-OCRv5 Live',
-                      style: TextStyle(color: AppTheme.accentColor, fontSize: 11,
-                          fontWeight: FontWeight.w600)),
-                ]),
-                const SizedBox(height: 8),
-                Text(
-                  _liveText.isEmpty ? 'Scanning…' : _liveText,
-                  style: TextStyle(
-                      color: _liveText.isEmpty ? Colors.white38 : Colors.white,
-                      fontSize: 14, height: 1.5),
-                  maxLines: 6, overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-
+      // 底部操作栏
       Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomBar()),
 
-      // 识别中遮罩（静态模式）
-      if (_isProcessing && !_isLiveMode)
+      // 识别中遮罩
+      if (_isProcessing)
         Container(
           color: Colors.black54,
           child: const Center(
@@ -311,46 +231,43 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   Widget _buildBottomBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+      padding: const EdgeInsets.fromLTRB(32, 20, 32, 44),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.bottomCenter, end: Alignment.topCenter,
-          colors: [Colors.black.withOpacity(0.92), Colors.transparent],
-          stops: const [0.55, 1.0],
+          colors: [Colors.black.withOpacity(0.85), Colors.transparent],
+          stops: const [0.6, 1.0],
         ),
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+        // 相册按钮
         _CircleBtn(
           icon: Icons.photo_library_outlined,
           label: 'Gallery',
           onTap: _pickFromGallery,
         ),
-        // 主按钮
+        // 主拍照按钮
         GestureDetector(
           onTap: _captureAndRecognize,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 72, height: 72,
+            duration: const Duration(milliseconds: 150),
+            width: 76, height: 76,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _isLiveMode ? Colors.white24 : Colors.white,
-              border: Border.all(color: Colors.white38, width: 3),
-              boxShadow: _isLiveMode ? [] : [
+              color: _isProcessing ? Colors.white30 : Colors.white,
+              border: Border.all(color: Colors.white54, width: 3),
+              boxShadow: _isProcessing ? [] : [
                 BoxShadow(color: AppTheme.primaryColor.withOpacity(0.55),
-                    blurRadius: 22, spreadRadius: 3),
+                    blurRadius: 24, spreadRadius: 4),
               ],
             ),
             child: Icon(Icons.camera_alt_rounded,
-                color: _isLiveMode ? Colors.white54 : AppTheme.darkBg,
-                size: 32),
+                color: _isProcessing ? Colors.white54 : AppTheme.darkBg,
+                size: 34),
           ),
         ),
-        _CircleBtn(
-          icon: _isLiveMode ? Icons.stop_circle_outlined : Icons.play_circle_outline,
-          label: _isLiveMode ? 'Stop' : 'Live',
-          onTap: _isLiveMode ? _stopLive : _startLive,
-          color: _isLiveMode ? AppTheme.accentColor : Colors.white,
-        ),
+        // 占位（保持三列对称）
+        const SizedBox(width: 64),
       ]),
     );
   }
@@ -369,7 +286,7 @@ class _CircleBtn extends StatelessWidget {
       onTap: onTap, borderRadius: BorderRadius.circular(40),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
-          width: 52, height: 52,
+          width: 56, height: 56,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white.withOpacity(0.15),
@@ -377,45 +294,10 @@ class _CircleBtn extends StatelessWidget {
           ),
           child: Icon(icon, color: color, size: 26),
         ),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(color: color, fontSize: 11)),
+        const SizedBox(height: 5),
+        Text(label, style: TextStyle(color: color, fontSize: 11,
+            shadows: const [Shadow(color: Colors.black54, blurRadius: 6)])),
       ]),
     );
   }
-}
-
-class _ScanOverlayPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bg = Paint()..color = Colors.black.withOpacity(0.4);
-    final clear = Paint()..blendMode = BlendMode.clear;
-    final border = Paint()
-      ..color = AppTheme.primaryColor
-      ..style = PaintingStyle.stroke..strokeWidth = 2.0;
-    final corner = Paint()
-      ..color = AppTheme.primaryColor
-      ..style = PaintingStyle.stroke..strokeWidth = 4.0
-      ..strokeCap = StrokeCap.round;
-
-    final w = size.width; final h = size.height;
-    const fw = 280.0; const fh = 180.0;
-    final l = (w - fw) / 2; final t = (h - fh) / 2 - 40;
-    final rect = Rect.fromLTWH(l, t, fw, fh);
-    const r = 12.0; const cl = 26.0;
-
-    canvas.saveLayer(Rect.fromLTWH(0, 0, w, h), Paint());
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), bg);
-    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(r)), clear);
-    canvas.restore();
-    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(r)), border);
-
-    void dc(Offset a, Offset b, Offset c) =>
-        canvas.drawPath(Path()..moveTo(a.dx, a.dy)..lineTo(b.dx, b.dy)..lineTo(c.dx, c.dy), corner);
-    dc(Offset(l, t+cl), Offset(l, t), Offset(l+cl, t));
-    dc(Offset(l+fw-cl, t), Offset(l+fw, t), Offset(l+fw, t+cl));
-    dc(Offset(l+fw, t+fh-cl), Offset(l+fw, t+fh), Offset(l+fw-cl, t+fh));
-    dc(Offset(l+cl, t+fh), Offset(l, t+fh), Offset(l, t+fh-cl));
-  }
-  @override
-  bool shouldRepaint(_) => false;
 }

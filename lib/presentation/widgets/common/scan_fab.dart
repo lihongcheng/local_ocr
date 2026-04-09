@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:local_ocr/l10n/app_localizations.dart';
 import '../../../services/app_provider.dart';
-import '../../screens/scanner/scanner_screen.dart';
 
 class ScanFab extends StatelessWidget {
   final AppLocalizations l;
@@ -18,10 +17,11 @@ class ScanFab extends StatelessWidget {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // 拖动条
               Container(
                 width: 40, height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
@@ -48,37 +48,30 @@ class ScanFab extends StatelessWidget {
                           fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
               ]),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
+              // 两个选项：拍照 + 相册
               Row(children: [
                 Expanded(child: _OptionCard(
-                  icon: Icons.camera_alt_rounded, label: l.scanCamera,
+                  icon: Icons.camera_alt_rounded,
+                  label: l.scanCamera,
                   color: const Color(0xFF4A90D9),
                   onTap: () {
                     Navigator.pop(ctx);
                     provider.pickAndRecognize(context, fromCamera: true);
                   },
                 )),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(child: _OptionCard(
-                  icon: Icons.photo_library_rounded, label: l.scanGallery,
+                  icon: Icons.photo_library_rounded,
+                  label: l.scanGallery,
                   color: const Color(0xFF7B61FF),
                   onTap: () {
                     Navigator.pop(ctx);
                     provider.pickAndRecognize(context, fromCamera: false);
                   },
                 )),
-                const SizedBox(width: 12),
-                Expanded(child: _OptionCard(
-                  icon: Icons.videocam_rounded, label: l.scanLive,
-                  color: const Color(0xFF00D2AA),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const ScannerScreen()));
-                  },
-                )),
               ]),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
             ],
           ),
         ),
@@ -111,17 +104,18 @@ class _OptionCard extends StatelessWidget {
     return InkWell(
       onTap: onTap, borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.symmetric(vertical: 28),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(color: color.withOpacity(0.35)),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
+          Icon(icon, color: color, size: 36),
+          const SizedBox(height: 10),
           Text(label,
-              style: TextStyle(color: color, fontSize: 12),
+              style: TextStyle(color: color, fontSize: 13,
+                  fontWeight: FontWeight.w600),
               textAlign: TextAlign.center),
         ]),
       ),
