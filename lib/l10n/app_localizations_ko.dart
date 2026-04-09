@@ -199,7 +199,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get privacyTitle => '개인정보 처리방침';
 
   @override
-  String get privacyLastUpdated => '최종 업데이트: 2025년 1월';
+  String get privacyLastUpdated => '최종 업데이트: 2026년 4월';
 
   @override
   String get privacyContact => '문의: 867263994@qq.com';

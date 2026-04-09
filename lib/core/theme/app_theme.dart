@@ -93,6 +93,12 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+      bottomAppBarTheme: const BottomAppBarThemeData(
+        color: darkSurface,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        elevation: 0,
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: darkSurface,
         surfaceTintColor: Colors.transparent,

@@ -7,15 +7,12 @@
 // 已移除实时识别功能。
 // 已移除中心矩形扫描框，改为全屏取景，体验更直观。
 //
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../services/app_provider.dart';
-import '../result/result_screen.dart';
+import '../processing/processing_screen.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -85,7 +82,7 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   // ── 拍照识别 ──────────────────────────────────────────────────────────────
 
-  Future<void> _captureAndRecognize() async {
+  Future<void> _captureAndNavigate() async {
     final ctrl = _controller;
     if (ctrl == null || !ctrl.value.isInitialized) return;
     if (_isProcessing) return;
@@ -94,7 +91,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     try {
       final xFile = await ctrl.takePicture();
       if (!mounted) return;
-      await _runRecognitionAndNavigate(xFile.path);
+      await _navigateToProcessing(xFile.path);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -109,32 +106,18 @@ class _ScannerScreenState extends State<ScannerScreen>
     final xFile = await _picker.pickImage(
         source: ImageSource.gallery, imageQuality: 90);
     if (xFile == null || !mounted) return;
-    await _runRecognitionAndNavigate(xFile.path);
+    await _navigateToProcessing(xFile.path);
   }
 
-  Future<void> _runRecognitionAndNavigate(String imagePath) async {
-    final provider = context.read<AppProvider>();
-
-    if (!provider.isModelReady) {
-      await provider.initOcr();
-      if (!provider.isModelReady) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('OCR model not ready. Check internet connection.')));
-        }
-        return;
-      }
-    }
-
-    await provider.recognizeFromPath(imagePath);
+  // 拍照后直接跳转到正在识别页
+  Future<void> _navigateToProcessing(String imagePath) async {
     if (!mounted) return;
-    if (provider.status == AppStatus.success) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (_) => const ResultScreen()));
-    } else if (provider.errorMessage.isNotEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(provider.errorMessage)));
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProcessingScreen(imagePath: imagePath),
+      ),
+    );
   }
 
   @override
@@ -248,7 +231,7 @@ class _ScannerScreenState extends State<ScannerScreen>
         ),
         // 主拍照按钮
         GestureDetector(
-          onTap: _captureAndRecognize,
+          onTap: _captureAndNavigate,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             width: 76, height: 76,

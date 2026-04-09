@@ -9,7 +9,6 @@ class ScanFab extends StatelessWidget {
   const ScanFab({super.key, required this.l});
 
   void _showPickOptions(BuildContext context) {
-    final provider = context.read<AppProvider>();
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1A1D2E),
@@ -21,7 +20,6 @@ class ScanFab extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 拖动条
               Container(
                 width: 40, height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
@@ -29,7 +27,6 @@ class ScanFab extends StatelessWidget {
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(2)),
               ),
-              // 标题 + 引擎标签
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Text(l.scanStart,
                     style: const TextStyle(color: Colors.white,
@@ -49,15 +46,14 @@ class ScanFab extends StatelessWidget {
                 ),
               ]),
               const SizedBox(height: 28),
-              // 两个选项：拍照 + 相册
               Row(children: [
                 Expanded(child: _OptionCard(
                   icon: Icons.camera_alt_rounded,
                   label: l.scanCamera,
                   color: const Color(0xFF4A90D9),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(ctx);
-                    provider.pickAndRecognize(context, fromCamera: true);
+                    await _startRecognition(context, fromCamera: true);
                   },
                 )),
                 const SizedBox(width: 16),
@@ -65,9 +61,9 @@ class ScanFab extends StatelessWidget {
                   icon: Icons.photo_library_rounded,
                   label: l.scanGallery,
                   color: const Color(0xFF7B61FF),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(ctx);
-                    provider.pickAndRecognize(context, fromCamera: false);
+                    await _startRecognition(context, fromCamera: false);
                   },
                 )),
               ]),
@@ -77,6 +73,13 @@ class ScanFab extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// 选择图片后直接跳转到正在识别页
+  Future<void> _startRecognition(BuildContext context,
+      {required bool fromCamera}) async {
+    final provider = context.read<AppProvider>();
+    await provider.pickAndNavigateToProcessing(context, fromCamera: fromCamera);
   }
 
   @override

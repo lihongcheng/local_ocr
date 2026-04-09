@@ -66,12 +66,15 @@ class PrivacyPolicyScreen extends StatelessWidget {
   }
 
   List<Widget> _buildSections(BuildContext context) {
-    final locale = Localizations.localeOf(context).languageCode;
-    final isZh = locale == 'zh';
-    final isJa = locale == 'ja';
-    final isKo = locale == 'ko';
+    final locale = Localizations.localeOf(context);
+    final langCode = locale.languageCode;
+    final countryCode = locale.countryCode;
+    final isZh = langCode == 'zh' && countryCode != 'TW';
+    final isZhTw = langCode == 'zh' && countryCode == 'TW';
+    final isJa = langCode == 'ja';
+    final isKo = langCode == 'ko';
 
-    final sections = _getLocalizedSections(isZh, isJa, isKo);
+    final sections = _getLocalizedSections(isZh, isZhTw, isJa, isKo);
     return sections
         .map((s) => Padding(
               padding: const EdgeInsets.only(bottom: 20),
@@ -81,8 +84,51 @@ class PrivacyPolicyScreen extends StatelessWidget {
   }
 
   List<Map<String, String>> _getLocalizedSections(
-      bool isZh, bool isJa, bool isKo) {
-    if (isZh) {
+      bool isZh, bool isZhTw, bool isJa, bool isKo) {
+    if (isZhTw) {
+      return [
+        {
+          'title': '1. 資訊收集',
+          'body':
+              '本應用程式（「本地OCR」）不收集、儲存或傳送任何個人資訊。\n\n'
+              '• 所有圖片處理均在您的裝置本地完成。\n'
+              '• 識別結果僅儲存在您裝置的本地資料庫中。\n'
+              '• 我們不會存取您的聯絡人、位置或其他敏感資料。',
+        },
+        {
+          'title': '2. 相機與相簿權限',
+          'body':
+              '本應用程式需要以下權限：\n\n'
+              '• 相機權限：用於即時掃描和拍照識別，圖片不會離開您的裝置。\n'
+              '• 相簿權限：用於選擇圖片進行文字識別，所選圖片不會上傳。',
+        },
+        {
+          'title': '3. 廣告',
+          'body':
+              '本應用程式在 Android 版本中整合了 Google AdMob 廣告。廣告服務可能根據其自身隱私政策收集相關資料（如裝置 ID、廣告識別符）用於廣告投放。\n\n'
+              'iOS 版本不包含任何廣告。\n\n'
+              '如需了解 Google 廣告資料使用政策，請前往：\nhttps://policies.google.com/technologies/ads',
+        },
+        {
+          'title': '4. 本地資料儲存',
+          'body':
+              '識別歷史記錄（文字內容和縮圖）僅儲存在您裝置的本地儲存空間中，不會同步到雲端或第三方伺服器。您可以隨時在設定中清空所有資料。',
+        },
+        {
+          'title': '5. OCR 技術',
+          'body':
+              '本應用程式使用 PaddleOCR（PP-OCRv5）開源模型提供本地文字識別功能。該模型完全在裝置本地執行，識別過程中不會產生任何網路請求。',
+        },
+        {
+          'title': '6. 適用人群',
+          'body': '本應用程式適用於所有年齡層的使用者，不故意收集任何人的個人資訊。',
+        },
+        {
+          'title': '7. 政策變更',
+          'body': '我們可能會不定期更新本隱私政策。如有重大變更，將透過應用程式更新或內建通知的方式告知您。',
+        },
+      ];
+    } else if (isZh) {
       return [
         {
           'title': '1. 信息收集',
@@ -114,11 +160,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
         {
           'title': '5. OCR 技术',
           'body':
-              '本应用使用 Google ML Kit 提供的本地文字识别模型。该模型完全在设备本地运行，识别过程中不会产生任何网络请求。',
+              '本应用使用 PaddleOCR（PP-OCRv5）开源模型提供本地文字识别功能。该模型完全在设备本地运行，识别过程中不会产生任何网络请求。',
         },
         {
-          'title': '6. 儿童隐私',
-          'body': '本应用不面向13岁以下儿童，也不故意收集儿童个人信息。',
+          'title': '6. 适用人群',
+          'body': '本应用面向所有年龄段的用户，不故意收集任何人的个人信息。',
         },
         {
           'title': '7. 政策变更',
@@ -155,11 +201,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
         {
           'title': '5. OCR技術について',
           'body':
-              '本アプリはGoogle ML Kitのオフライン文字認識モデルを使用しています。認識処理中にネットワーク通信は発生しません。',
+              '本アプリはPaddleOCR（PP-OCRv5）オープンソースモデルを使用してローカル文字認識機能を提供しています。認識処理中にネットワーク通信は発生しません。',
         },
         {
-          'title': '6. 子供のプライバシー',
-          'body': '本アプリは13歳未満の子供を対象としておらず、意図的に個人情報を収集することはありません。',
+          'title': '6. 対象ユーザー',
+          'body': '本アプリはすべての年齢層のユーザーを対象としており、意図的に個人情報を収集することはありません。',
         },
         {
           'title': '7. ポリシーの変更',
@@ -196,11 +242,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
         {
           'title': '5. OCR 기술',
           'body':
-              '본 앱은 Google ML Kit의 오프라인 문자 인식 모델을 사용합니다. 인식 과정에서 네트워크 요청이 발생하지 않습니다.',
+              '본 앱은 PaddleOCR（PP-OCRv5）오픈소스 모델을 사용하여 로컬 문자 인식 기능을 제공합니다. 인식 과정에서 네트워크 요청이 발생하지 않습니다.',
         },
         {
-          'title': '6. 아동 개인정보',
-          'body': '본 앱은 13세 미만 아동을 대상으로 하지 않으며, 아동의 개인정보를 의도적으로 수집하지 않습니다.',
+          'title': '6. 대상 사용자',
+          'body': '본 앱은 모든 연령대의 사용자를 대상으로 하며, 의도적으로 개인정보를 수집하지 않습니다.',
         },
         {
           'title': '7. 정책 변경',
@@ -240,11 +286,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
         {
           'title': '5. OCR Technology',
           'body':
-              'This app uses Google ML Kit\'s on-device text recognition model. No network requests are made during the recognition process.',
+              'This app uses PaddleOCR (PP-OCRv5) open-source model for on-device text recognition. No network requests are made during the recognition process.',
         },
         {
-          'title': '6. Children\'s Privacy',
-          'body': 'This app is not directed at children under 13 and does not knowingly collect personal information from children.',
+          'title': '6. Target Users',
+          'body': 'This app is intended for users of all ages and does not knowingly collect personal information from anyone.',
         },
         {
           'title': '7. Changes to This Policy',

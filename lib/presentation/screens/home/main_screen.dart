@@ -25,34 +25,88 @@ class MainScreen extends StatelessWidget {
 
     return Scaffold(
       body: IndexedStack(index: index, children: _screens),
+      // FAB 居中悬浮在导航栏正上方
       floatingActionButton: ScanFab(l: l),
-      bottomNavigationBar: Column(
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      bottomNavigationBar: _BottomBar(index: index, provider: provider, l: l),
+    );
+  }
+}
+
+/// 底部栏：广告 + 自定义导航（无缺口，无黑色半圆）
+class _BottomBar extends StatelessWidget {
+  final int index;
+  final AppProvider provider;
+  final AppLocalizations l;
+  const _BottomBar({required this.index, required this.provider, required this.l});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTheme.darkSurface,
+      elevation: 0,
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 广告位在底部导航栏正上方
+          // 广告位
           const BannerAdWidget(),
-          NavigationBar(
-            backgroundColor: AppTheme.darkSurface,
-            indicatorColor: AppTheme.primaryColor.withOpacity(0.2),
-            selectedIndex: index,
-            onDestinationSelected: (i) => provider.setNavIndex(i),
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: [
-              NavigationDestination(
-                icon: Icon(Icons.history_rounded, color: Colors.white38),
-                selectedIcon: Icon(Icons.history_rounded, color: AppTheme.primaryColor),
-                label: l.tabHistory,
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_rounded, color: Colors.white38),
-                selectedIcon: Icon(Icons.settings_rounded, color: AppTheme.primaryColor),
-                label: l.tabSettings,
-              ),
-            ],
+          // 分割线
+          const Divider(height: 1, thickness: 1, color: AppTheme.darkBorder),
+          // 导航行（中间留空给 FAB）
+          SizedBox(
+            height: 60,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _NavItem(
+                    icon: Icons.history_rounded,
+                    label: l.tabHistory,
+                    isSelected: index == 0,
+                    onTap: () => provider.setNavIndex(0),
+                  ),
+                ),
+                // 中间空位（FAB 浮在其上方）
+                const SizedBox(width: 80),
+                Expanded(
+                  child: _NavItem(
+                    icon: Icons.settings_rounded,
+                    label: l.tabSettings,
+                    isSelected: index == 1,
+                    onTap: () => provider.setNavIndex(1),
+                  ),
+                ),
+              ],
+            ),
           ),
+          // 适配底部安全区
+          SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
   }
 }
 
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  const _NavItem({required this.icon, required this.label,
+      required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isSelected ? AppTheme.primaryColor : Colors.white38;
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 3),
+          Text(label, style: TextStyle(color: color, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}

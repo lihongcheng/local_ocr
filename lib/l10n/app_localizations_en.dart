@@ -199,7 +199,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacyTitle => 'Privacy Policy';
 
   @override
-  String get privacyLastUpdated => 'Last updated: January 2025';
+  String get privacyLastUpdated => 'Last updated: April 2026';
 
   @override
   String get privacyContact => 'Contact: 867263994@qq.com';

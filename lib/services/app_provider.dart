@@ -9,6 +9,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../data/models/ocr_record.dart';
+import '../presentation/screens/processing/processing_screen.dart';
 import 'database_service.dart';
 import 'ocr_service.dart';
 import 'ad_service.dart';
@@ -155,6 +156,42 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ── 拍照 / 相册 识别 ──────────────────────────────────────────────────────
+
+  /// 选择图片后直接跳转到正在识别页（由 ProcessingScreen 执行识别）
+  Future<void> pickAndNavigateToProcessing(
+    BuildContext context, {
+    bool fromCamera = false,
+  }) async {
+    try {
+      // 权限
+      final hasPerm = fromCamera
+          ? await _requestCameraPermission(context)
+          : await _requestStoragePermission(context);
+      if (!hasPerm) return;
+
+      // 选图
+      final xFile = await _picker.pickImage(
+        source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: 2048, maxHeight: 2048, imageQuality: 90,
+      );
+      if (xFile == null || !context.mounted) return;
+
+      // 直接跳转到正在识别页
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProcessingScreen(
+            imagePath: xFile.path,
+            isFromCamera: fromCamera,
+          ),
+        ),
+      );
+    } catch (e) {
+      _status = AppStatus.error;
+      _errorMessage = 'Error: $e';
+      notifyListeners();
+    }
+  }
 
   Future<void> pickAndRecognize(
     BuildContext context, {

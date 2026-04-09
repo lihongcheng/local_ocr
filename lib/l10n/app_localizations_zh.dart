@@ -198,7 +198,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get privacyTitle => '隐私政策';
 
   @override
-  String get privacyLastUpdated => '最后更新：2025年1月';
+  String get privacyLastUpdated => '最后更新：2026年4月';
 
   @override
   String get privacyContact => '联系邮箱：867263994@qq.com';
@@ -453,7 +453,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get privacyTitle => '隱私政策';
 
   @override
-  String get privacyLastUpdated => '最後更新：2025年1月';
+  String get privacyLastUpdated => '最後更新：2026年4月';
 
   @override
   String get privacyContact => '聯絡信箱：867263994@qq.com';
