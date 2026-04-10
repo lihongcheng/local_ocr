@@ -241,6 +241,7 @@ PP-OCRv5 다국어 모델이 80개 이상의 언어를 자동 인식:
 
 **简体中文：**
 ```
+<zh-CN>
 首次发布
 • 基于 PP-OCRv5 的完全离线OCR，自动识别80+种语言
 • 拍照识别、相册选图两种模式
@@ -248,10 +249,12 @@ PP-OCRv5 다국어 모델이 80개 이상의 언어를 자동 인식:
 • TTS语音朗读功能，支持中英日韩四种语言
 • 本地历史记录，全文搜索
 • 100%本地处理，您的隐私完全受保护
+</zh-CN>
 ```
 
 **繁体中文：**
 ```
+<zh-TW>
 首次發布
 • 基於 PP-OCRv5 的完全離線OCR，自動識別80+種語言
 • 拍照識別、相簿選圖兩種模式
@@ -259,10 +262,12 @@ PP-OCRv5 다국어 모델이 80개 이상의 언어를 자동 인식:
 • TTS語音朗讀功能，支援中英日韓四種語言
 • 本地歷史記錄，全文搜尋
 • 100%本地處理，您的隱私完全受保護
+</zh-TW>
 ```
 
 **English：**
 ```
+<en-US>
 Initial Release
 • Fully offline OCR powered by PP-OCRv5, auto-detecting 80+ languages
 • Two scan modes: camera capture and gallery import
@@ -270,10 +275,12 @@ Initial Release
 • Text-to-speech playback in Chinese, English, Japanese, Korean
 • Local history with full-text search
 • 100% on-device processing — your privacy is fully protected
+</en-US>
 ```
 
 **日本語：**
 ```
+<ja-JP>
 初回リリース
 • PP-OCRv5搭載の完全オフラインOCR、80以上の言語を自動認識
 • カメラ撮影・ギャラリー選択の2モード
@@ -281,10 +288,12 @@ Initial Release
 • テキスト読み上げ（TTS）機能、中日英韓4言語対応
 • ローカル履歴と全文検索
 • 完全ローカル処理でプライバシーを完全保護
+</ja-JP>
 ```
 
 **한국어：**
 ```
+<ko-KR>
 최초 출시
 • PP-OCRv5 기반 완전 오프라인 OCR, 80개 이상 언어 자동 인식
 • 카메라 촬영·갤러리 선택 2가지 스캔 모드
@@ -292,6 +301,7 @@ Initial Release
 • 텍스트 음성 읽기(TTS) 기능, 중국어·영어·일본어·한국어 4개 언어 지원
 • 로컬 기록 및 전체 텍스트 검색
 • 100% 로컬 처리로 개인정보 완벽 보호
+</ko-KR>
 ```
 
 ---

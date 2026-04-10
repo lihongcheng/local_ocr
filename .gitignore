@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android signing
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
+
+# Gradle cache
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
