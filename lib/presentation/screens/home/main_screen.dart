@@ -25,9 +25,6 @@ class MainScreen extends StatelessWidget {
 
     return Scaffold(
       body: IndexedStack(index: index, children: _screens),
-      // FAB 居中悬浮在导航栏正上方
-      floatingActionButton: ScanFab(l: l),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: _BottomBar(index: index, provider: provider, l: l),
     );
   }
@@ -52,7 +49,7 @@ class _BottomBar extends StatelessWidget {
           const BannerAdWidget(),
           // 分割线
           const Divider(height: 1, thickness: 1, color: AppTheme.darkBorder),
-          // 导航行（中间留空给 FAB）
+          // 导航行（中间凸起扫描按钮）
           SizedBox(
             height: 60,
             child: Row(
@@ -65,8 +62,11 @@ class _BottomBar extends StatelessWidget {
                     onTap: () => provider.setNavIndex(0),
                   ),
                 ),
-                // 中间空位（FAB 浮在其上方）
-                const SizedBox(width: 80),
+                // 中间凸起扫描按钮
+                Transform.translate(
+                  offset: const Offset(0, -16),
+                  child: ScanFab(l: l),
+                ),
                 Expanded(
                   child: _NavItem(
                     icon: Icons.settings_rounded,

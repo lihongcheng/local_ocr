@@ -84,12 +84,25 @@ class ScanFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FloatingActionButton.extended(
-      onPressed: () => _showPickOptions(context),
-      icon: const Icon(Icons.document_scanner_rounded),
-      label: Text(l.scanStart,
-          style: const TextStyle(fontWeight: FontWeight.bold)),
-      elevation: 6,
+    return GestureDetector(
+      onTap: () => _showPickOptions(context),
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: const Color(0xFF4A90D9),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4A90D9).withValues(alpha: 0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.document_scanner_rounded,
+            color: Colors.white, size: 28),
+      ),
     );
   }
 }

@@ -29,9 +29,38 @@ class _ResultScreenState extends State<ResultScreen> {
     super.initState();
     final record = context.read<AppProvider>().currentRecord;
     _editController = TextEditingController(text: record?.extractedText ?? '');
+    _initTts();
     _tts.setCompletionHandler(() {
       if (mounted) setState(() => _isSpeaking = false);
     });
+  }
+
+  Future<void> _initTts() async {
+    // 设置更自然的语音参数
+    await _tts.setVolume(1.0);
+    await _tts.setSpeechRate(0.5); // 适中的语速
+    await _tts.setPitch(1.0); // 正常音调
+
+    // 尝试获取并选择更自然的声音
+    try {
+      final voices = await _tts.getVoices;
+      if (voices != null && voices.isNotEmpty) {
+        // 优先选择神经网络声音或高质量声音
+        for (final voice in voices) {
+          final name = voice.toString().toLowerCase();
+          // Android: 优先选择 Google Neural 或高品质声音
+          if (name.contains('neural') ||
+              name.contains('natural') ||
+              name.contains('wavenet') ||
+              name.contains('premium')) {
+            await _tts.setVoice(voice);
+            break;
+          }
+        }
+      }
+    } catch (_) {
+      // 忽略错误，使用默认声音
+    }
   }
 
   @override
